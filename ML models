@@ -1,0 +1,54 @@
+# Import libraries
+library(openai)
+library(spacyr)
+library(textclean)
+library(textstem)
+library(textshape)
+library(tm)
+library(NLP)
+library(RGtk2)
+library(gWidgets)
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("gWidgets")
+install.packages("gWidgets", type = "binary")
+
+
+# create a window
+window <- gwindow("Chatbot App", width = 400, height = 400)
+
+# create a text field
+query_text <- gedit("", container = window, expand = TRUE)
+
+# create a button
+button <- gbutton("Submit", container = window)
+
+# function to get input and display output
+chatbot_app <- function(){
+  user_input <- svalue(query_text)
+  # use GPT-4
+  gpt_output <- openai::create_prompt(prompt = user_input, model = "text-davinci-002", max_tokens = 60)$choices[[1]]$text
+  # use BioGPT
+  biogpt_output <- spacyr::spacy_parse(user_input, model = "en_core_web_sm")
+  # natural language processing
+  nlp_output <- tokenize_words(user_input)
+  # grammar checking
+  grammar_output <- qdapRegex::rm_default(user_input, remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE)
+  # text summarization
+  summary_output <- sumy::summarize(user_input, language = "english")
+  # paraphrase sentences
+  paraphrase_output <- textshape::synonym(user_input)
+  # R code editor
+  R_output <- gsub('[^a-zA-Z ]', '', user_input)
+  
+  # display output
+  output_text <- paste0("GPT-4: ", gpt_output, "\nBioGPT: ", biogpt_output, "\nNLP: ", nlp_output,
+                        "\nGrammar: ", grammar_output, "\nSummary: ", summary_output,
+                        "\nParaphrase: ", paraphrase_output, "\nR Output: ", R_output)
+  gtext(output_text, container = window)
+}
+
+# add action to button
+addHandlerClicked(button, handler = chatbot_app)
+
