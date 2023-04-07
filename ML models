@@ -1,54 +1,297 @@
-# Import libraries
-library(openai)
-library(spacyr)
-library(textclean)
-library(textstem)
-library(textshape)
-library(tm)
-library(NLP)
-library(RGtk2)
-library(gWidgets)
+---
+title: "Q1N_inf_ML"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-03-20"
+editor_options:
+  chunk_output_type: console
+---
 
-if (!requireNamespace("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
-BiocManager::install("gWidgets")
-install.packages("gWidgets", type = "binary")
+#loading packages
+
+```{r loading packages, echo=FALSE, warning=FALSE}
+library("readxl")
+library(openxlsx)
+library("lattice")
+library(rlang)
+library(ggplot2)
+library("caret")
+library("rpart")
+library("rpart.plot")
+
+library("dendextend")
+library("installr")
+library("colorspace")
+library("circlize")
+library("pvclust")
+library("gplots")
+library("grid")
+library("gridExtra")
+library("factoextra")
+library("ggdendro")
+library(dplyr)
+library(zoo)
+```
+
+#loading data
+
+```{r loading data, echo=FALSE, warning=FALSE, include=TRUE}
+setwd("G:/My Drive/PhD/BFe Project/Cytokine array/CBA_ML/Graphs")
+df24<- read_excel("G:/My Drive/PhD/BFe Project/Cytokine array/CBA_ML/Q1N_ML_Pool.xlsx", sheet = "test", col_names = TRUE)
+#log_cap<- log2(df24)
+#write.xlsx(log_cap, "log_cap.xlsx")
+df24$x -> rows
+row.names(df24)<-df24$x
+samplename<-df24$x
+df24 <- df24[,-1]
+df24$Lable -> Label
+df24$Lable<-as.factor(df24$Lable)
+row.names(df24) <- samplename
+table(df24$Lable)
+str(df24)
+
+```
 
 
-# create a window
-window <- gwindow("Chatbot App", width = 400, height = 400)
 
-# create a text field
-query_text <- gedit("", container = window, expand = TRUE)
+```{r replace NA_try, eval=FALSE, warning=FALSE, include=FALSE}
+# Loop over groups and replace missing values with group normal distribution
 
-# create a button
-button <- gbutton("Submit", container = window)
 
-# function to get input and display output
-chatbot_app <- function(){
-  user_input <- svalue(query_text)
-  # use GPT-4
-  gpt_output <- openai::create_prompt(prompt = user_input, model = "text-davinci-002", max_tokens = 60)$choices[[1]]$text
-  # use BioGPT
-  biogpt_output <- spacyr::spacy_parse(user_input, model = "en_core_web_sm")
-  # natural language processing
-  nlp_output <- tokenize_words(user_input)
-  # grammar checking
-  grammar_output <- qdapRegex::rm_default(user_input, remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE)
-  # text summarization
-  summary_output <- sumy::summarize(user_input, language = "english")
-  # paraphrase sentences
-  paraphrase_output <- textshape::synonym(user_input)
-  # R code editor
-  R_output <- gsub('[^a-zA-Z ]', '', user_input)
-  
-  # display output
-  output_text <- paste0("GPT-4: ", gpt_output, "\nBioGPT: ", biogpt_output, "\nNLP: ", nlp_output,
-                        "\nGrammar: ", grammar_output, "\nSummary: ", summary_output,
-                        "\nParaphrase: ", paraphrase_output, "\nR Output: ", R_output)
-  gtext(output_text, container = window)
-}
 
-# add action to button
-addHandlerClicked(button, handler = chatbot_app)
+```
+
+
+
+#imputation NA & normalization
+
+```{r imputation NA, eval=FALSE, warning=FALSE, include=FALSE}
+
+
+
+```
+
+
+#PCA
+
+```{r Clustring, eval=FALSE, warning=FALSE, include=FALSE}
+set.seed(9)
+TrainingIndex2 <- createDataPartition(df2$Lable, p=1, list = FALSE)
+TrainingSet2 <- df2[TrainingIndex2,]
+dim(TrainingSet2)
+TestingSet2 <- df2[-TrainingIndex2,]
+#TestingSet2$Lable <- "unknown"
+dim(TestingSet2)
+data_unsup2 <- as.data.frame(rbind(TrainingSet2, TestingSet2))
+
+
+# Check the class of the input data
+class(data_unsup2[,1:12])
+
+# Convert the data to numeric
+data_unsup2[,1:12] <- as.numeric(as.matrix(data_unsup2[,1:12]))
+
+# Check the class of the input data again
+class(data_unsup2[,1:12])
+
+pca2 <- prcomp(as.matrix(data_unsup2[,1:12]), center = TRUE, scale. = TRUE)
+
+pca2 <- prcomp(data_unsup2[,1:12], center = TRUE, scale. = TRUE)
+class(pca2)
+is.list(pca2)
+png(filename = "Q1N_inf2h.2.png", width = 12, height = 12, units = "cm", res = 300)
+fviz_eig(pca2, addlabels = TRUE, xlab="PCA1", ylab="PCA2")
+dev.off()
+df_out2 <- as.data.frame(pca2$x)
+head(df_out2)
+df_out2$Class <- as.character(data_unsup2[,13])
+p1 <- ggplot(df_out2, aes(x=PC1, y=PC2, color=Class, label=rownames(df_out2))) +
+  geom_point() + geom_text(aes(label=rownames(df_out2)), hjust=0, vjust=0) +
+  theme_bw()
+p2 <- ggplot(df_out2, aes(x=PC1, y=PC3, color=Class, label=rownames(df_out2))) +
+  geom_point() +geom_text(aes(label=rownames(df_out2)), hjust=0, vjust=0) +
+  theme_bw()
+p3 <- ggplot(df_out2, aes(x=PC2, y=PC3, color=Class, label=rownames(df_out2))) +
+  geom_point() +geom_text(aes(label=rownames(df_out2)), hjust=0, vjust=0) +
+  theme_bw()
+pFin <- grid.arrange(p1,p2,p3, ncol=2)
+ggsave(pFin, filename = "Q1N_inf4h.png", device = "png", dpi = 600, width = 30, height = 30,
+       units = "cm")
+png(filename = "Q1N_inf4h.3.png", width = 12, height = 12, units = "cm", res = 300)
+plot(pca$x[,1],pca$x[,2], xlab="PCA1 (34.4%)", ylab="PCA2 (28.9%)")
+dev.off()
+```
+
+#Heatmap
+
+```{r clustring, echo=FALSE, warning=FALSE}
+#pre processing data #displays structures of R objects = class
+hh24<-df24
+which(apply(hh24[,1:12],2,var)==0)
+hh24[,1:12]<- hh24[,1:12][,which(apply(hh24[,1:12],2,var)!=0)]
+sum(is.na(hh24))
+sapply(hh24, class)
+# Select only character columns
+char_cols <- sapply(hh24, is.character)
+# Convert character columns to numeric
+hh24[, char_cols] <- apply(hh24[, char_cols], 2, function(x) as.numeric(as.character(x)))
+hh24$Lable <- factor(hh24$Lable)
+str(hh24)	
+row.names(hh24) <- samplename
+
+#check to see if there are missing data? or the class of hh
+sum(is.na(hh24))
+sapply(hh24, class)
+
+#plot Heat map
+data2<- hh24[,-13]
+row.names(hh24) <- samplename
+
+png(filename = "heatmap_sample.png", width = 100, height = 100, units = "cm", res = 300)
+heatmap(as.matrix(t(data2)), main = "Heatmap_samples", cexRow = 2.75, cexCol = 3.5, scale="none")
+dev.off()
+
+png(filename = "heatmap_cytokine.png", width = 100, height = 100, units = "cm", res = 300)
+heatmap(as.matrix(hh24[,1:12]), main = "Heatmap_cytokines",
+        scale = "none", cexRow = 2.75, cexCol = 3.5,
+        RowSideColors = rainbow(10)[hh24$Lable])
+dev.off()
+
+```
+
+
+
+#rf, lda & ann
+
+```{r classification, echo=FALSE, warning=FALSE}
+#supervised classification,
+#pre processing data #displays structures of R objects = class
+hh24<-df24
+which(apply(hh24[,1:12],2,var)==0)
+hh24[,1:12]<- hh24[,1:12][,which(apply(hh24[,1:12],2,var)!=0)]
+sum(is.na(hh24))
+sapply(hh24, class)
+# Select only character columns
+char_cols <- sapply(hh24, is.character)
+# Convert character columns to numeric
+hh24[, char_cols] <- apply(hh24[, char_cols], 2, function(x) as.numeric(as.character(x)))
+hh24$Label<-factor(Label)
+hh24$Label <- factor(hh24$Label)
+str(hh24)	
+row.names(hh24) <- samplename
+#check to see if there are missing data? or the class of hh
+sum(is.na(hh24))
+sapply(hh24, class)
+hh244<-hh24[,c(5,7,8,9,13)]
+#create training_indices
+#training_indices <- createDataPartition(y = hh$Lable, p = 0.2, list = FALSE)
+set.seed(123)
+training_indices24 <- c(1:12,13:22) # create a vector containing the first 10 indices of each label
+hTrain24 <- hh24[training_indices24,]
+hTest24 <- hh24[-training_indices24,]
+
+
+control <- trainControl(method = "repeatedcv", number = 10, repeats = 3,
+                        summaryFunction = multiClassSummary, classProbs = TRUE, savePredictions = TRUE)
+metric <- "Accuracy"
+
+#replace NA values with the FALSE to test unlabeled CAPNETZ data.
+hTest24$Label <- ifelse(is.na(hTest24$Label), FALSE, TRUE)
+hTest24 <- hTest24[complete.cases(hTest24), ]
+df244 <- df24[!is.na(df24$Lable)]
+class(hTest24)
+
+#Random Forest
+set.seed(123)
+fit.rf24 <- train(x=hTrain24[,1:12], y=hTrain24$Lable, method = "rf", metric = metric, trControl = control,
+                preProcess = c("center", "scale"))
+
+#Artificial neuronal network (ANN)
+set.seed(123)
+fit.nnet24 <- train(x=hTrain24[,1:12], y=hTrain24$Lable, method = "nnet", metric = metric,
+                  trControl = control, preProcess = c("center", "scale"))
+
+#Linear discriminant analysis (LDA)
+set.seed(123)
+fit.lda24 <- train(x=hTrain24[,1:12], y=hTrain24$Lable, method = "lda", metric = metric, trControl =
+                   control, preProcess = c("center", "scale"))
+
+#SVM
+set.seed(123)
+fit.svm_Lin <- train(x=hTrain24[,1:12], y=hTrain24$Lable, method = "svmLinear", metric = metric,
+trControl = control, preProcess = c("center", "scale"))
+
+
+#KNN
+set.seed(123)
+fit.knn24 <- train(x=hTrain24[,1:12], y=hTrain24$Lable, method = "knn", metric = metric, trControl =
+control, preProcess = c("center", "scale"))
+
+
+#naive_bayes
+set.seed(123)
+fit.naive_bayes <- train(x=hTrain24[,1:12], y=hTrain24$Lable, method = "naive_bayes", metric = metric, trControl =
+control, preProcess = c("center", "scale"))
+
+
+#Summarize ML performance
+results24 <- resamples(list(lda=fit.lda24, rf=fit.rf24, nnet=fit.nnet24))
+summary(results24)
+
+#Plot comparison of models
+scales <- list(x=list(relation="free"), y=list(relation="free"))
+png(filename = "ML_performance_test_3F.png", width = 20, height = 20, units = "cm", res = 300)
+dotplot(results24, scales=scales, par.strip.text=list(cex=0.76), par.settings = list(par.xlab.text = list(cex = 0)))
+dev.off()
+
+#Predicting outcome for testing data set
+predictions <- predict(fit.lda24, hTest24[,1:12])
+
+#Compare predicted outcome and true outcome
+confusionMatrix(predictions, hTest24$Lable)
+
+
+gbmImp <- varImp(fit.rf24, scale = T)
+png(filename = "Q1N_test_nnet.png", width = 11, height = 16, units = "cm", res = 600)
+ggplot(gbmImp, aes(x = variable, y = importance)) +
+  geom_col() +
+  ggtitle("Q1N_test_rf") +
+  xlab("features") +
+  ylab("Importance") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette = "Set2")
+dev.off()
+
+
+##
+gbmImp <- varImp(fit.nnet, scale = TRUE)
+ff <- 1:12
+gbmImp$feature <- factor(gbmImp$variable, levels = gbmImp$variable[ff])
+
+ggplot(gbmImp, aes(x = variable, y = importance)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "Features", y = "Importance") +
+  ggtitle("Q2N_128mg24h_lda")
+
+
+```
+
+
+#feature selection
+
+```{r Recursive Feature Elimination (RFE), eval=FALSE, warning=FALSE, include=FALSE}
+library(caret)
+set.seed(123)
+ctrl <- rfeControl(method = "cv", number = 10)
+rfProfile <- rfe(x = hTrain24[,1:12], y = hTrain24$Lable, sizes = c(1:12), rfeControl = ctrl, method = "rf")
+print(rfProfile)
+rfProfile[["bestSubset"]]
+
+#optimizing data_set based on rfe for runing machine
+df24 <- df24[, c(rfProfile[["24Variables"]])]
+df24<- cbind(df24,Label)
+df24<- df24[,-6]
+```
 
