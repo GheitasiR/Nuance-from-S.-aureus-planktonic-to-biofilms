@@ -19,19 +19,6 @@ library(ggplot2)
 library("caret")
 library("rpart")
 library("rpart.plot")
-
-library("dendextend")
-library("installr")
-library("colorspace")
-library("circlize")
-library("pvclust")
-library("gplots")
-library("grid")
-library("gridExtra")
-library("factoextra")
-library("ggdendro")
-library(dplyr)
-library(zoo)
 ```
 
 #loading data
